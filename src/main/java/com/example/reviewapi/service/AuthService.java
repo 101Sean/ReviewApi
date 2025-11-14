@@ -41,6 +41,6 @@ public class AuthService {
             throw new IllegalArgumentException("유효하지 않거나 만료된 Refresh Token 입니다.");
         }
         // TODO : Redis 사용시 검증단계 구현
-
+        return jwtTokenProvider.regenerateAccessToken(token);
     }
 }
