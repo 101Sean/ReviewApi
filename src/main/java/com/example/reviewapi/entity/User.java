@@ -1,6 +1,6 @@
 package com.example.reviewapi.entity;
 
-import com.example.reviewapi.config.Role;
+import com.example.reviewapi.domain.Role;
 import jakarta.persistence.*;
 import lombok.*;
 

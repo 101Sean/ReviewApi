@@ -1,4 +1,4 @@
-package com.example.reviewapi.config;
+package com.example.reviewapi.domain;
 
 public enum Role {
     ADMIN, USER
