@@ -23,24 +23,28 @@ import java.util.stream.Collectors;
 @Component
 public class JwtTokenProvider {
     private final Key key;
+    private final long ACCESS_TOKEN_EXPIRE_TIME = 1000L * 60 * 30;  // 30분
+    private final long REFRESH_TOKEN_EXPIRE_TIME = 1000L * 60 * 60 * 24 * 7;  // 7일
 
     public JwtTokenProvider(@Value("${jwt.secret-key}") String secretKey) {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // AccessToken
-    public String generateAccessToken(Authentication auth) {
-        return generateToken(auth, 1000L * 60 * 30);  // 30분
+    public long getRefreshTokenExpiryTime() {
+        return REFRESH_TOKEN_EXPIRE_TIME;
     }
 
-    // RefreshToken
-    public String generateRefreshToken(Authentication auth) {
-        return generateToken(auth, 1000L * 60 * 60 * 24 * 7);  // 7일
+    public String generateAccessToken(Long userId, Collection<? extends GrantedAuthority> auth) {
+        return generateToken(String.valueOf(userId), auth, ACCESS_TOKEN_EXPIRE_TIME);  // 30분
     }
 
-    private String generateToken(Authentication auth, long expireTime) {
-        String authorities = auth.getAuthorities().stream()
+    public String generateRefreshToken(Long userId, Collection<? extends GrantedAuthority> auth) {
+        return generateToken(String.valueOf(userId), auth, REFRESH_TOKEN_EXPIRE_TIME);  // 7일
+    }
+
+    private String generateToken(String subject, Collection<? extends GrantedAuthority> auth, long expireTime) {
+        String authString = auth.stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
@@ -48,8 +52,8 @@ public class JwtTokenProvider {
         Date expiration = new Date(now.getTime() + expireTime);
 
         return Jwts.builder()
-                .setSubject(auth.getName())
-                .claim("auth", authorities)
+                .setSubject(subject)
+                .claim("auth", authString)
                 .setIssuedAt(now)
                 .setExpiration(expiration)
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -58,20 +62,20 @@ public class JwtTokenProvider {
 
     public String regenerateAccessToken(String token) {
         Claims claims = parseClaims(token);
-        String username = claims.getSubject();
-        String authorities = claims.get("auth").toString();
+        String userId = claims.getSubject();
 
-        long accessTokenExpireTime = 1000L * 60 * 30;  // 30분
-        Date now = new Date();
-        Date expiration = new Date(now.getTime() + accessTokenExpireTime);
+        Collection<? extends GrantedAuthority> auth =
+                Arrays.stream(claims.get("auth").toString().split(","))
+                        .map(SimpleGrantedAuthority::new)
+                        .collect(Collectors.toList());
 
-        return Jwts.builder()
-                .setSubject(username)
-                .claim("auth", authorities)
-                .setIssuedAt(now)
-                .setExpiration(expiration)
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
+        return generateToken(userId, auth, ACCESS_TOKEN_EXPIRE_TIME);
+    }
+
+    // 토큰에서 userId 추출
+    public Long getUserIdFromToken(String token) {
+        Claims claims = parseClaims(token);
+        return Long.valueOf(claims.getSubject());
     }
 
     // 토큰으로 Authenticaiton 객체 생성
