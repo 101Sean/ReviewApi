@@ -40,6 +40,7 @@ public class User extends BaseEntity implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    // Spring Security Columns
     @Column(nullable = false)
     private boolean isAccountNonLocked = true;
 
@@ -69,5 +70,24 @@ public class User extends BaseEntity implements UserDetails {
     @Override
     public boolean isEnabled() {
         return this.isEnabled;
+    }
+
+    // 엔티티 내부에서 데이터 변경 (JPA Dirty Checking)
+    public void updateProfile(String nickname, String profileImageUrl, String bio) {
+        if(nickname != null && !nickname.isEmpty()) {
+            this.nickname = nickname;
+        }
+
+        if(profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
+
+        if(bio != null) {
+            this.bio = bio;
+        }
+    }
+
+    public void updatePassword(String password) {
+        this.password = password;
     }
 }
